@@ -62,17 +62,27 @@ export default class PackageDAO extends BaseDAO {
     }
 
     public static async getNewestApplicablePackage(connection: IConnection, deploymentKey: string,
-        tags: string[] | undefined): Promise<PackageDTO | void> {
+        tags: string[] | undefined, appVersion: string | undefined): Promise<PackageDTO | void> {
 
         const deployment = await DeploymentDAO.deploymentForKey(connection, deploymentKey);
         const deploymentId = deployment.id;
 
-        const query = (tags && tags.length > 0) ? PackageQueries.getMostRecentPackageIdByDeploymentAndTags :
-            PackageQueries.getMostRecentPackageIdByDeploymentNoTags;
-
-        const params = (tags && tags.length > 0) ? [deploymentId, tags, deploymentId] : [deploymentId];
-
-        const result = await PackageDAO.query(connection, query, params);
+        const useTags = tags && tags.length > 0 ? "tags" : "notags";
+        const useVersion = appVersion !== undefined ? "version" : "noversion";
+        const allQueries:{[key:string]: string;} = {
+            "tags-noversion": PackageQueries.getMostRecentPackageIdByDeploymentAndTags,
+            "notags-noversion": PackageQueries.getMostRecentPackageIdByDeploymentNoTags,
+            "tags-version": PackageQueries.getMostRecentPackageIdByDeploymentAndTagsAndVersion,
+            "notags-version": PackageQueries.getMostRecentPackageIdByDeploymentNoTagsAndVersion
+        }
+        const allParams:{[key:string]:any} = {
+            "tags-noversion": [deploymentId, tags, deploymentId],
+            "notags-noversion": [deploymentId],
+            "tags-version": [deploymentId, appVersion, tags, deploymentId, appVersion],
+            "notags-version": [deploymentId, appVersion]
+        }
+        const key = `${useTags}-${useVersion}`;
+        const result = await PackageDAO.query(connection, allQueries[key], allParams[key]);
 
         if (result && result.length > 0) {
             return await PackageDAO.packageById(connection, result[0].package_id);
@@ -100,21 +110,38 @@ export default class PackageDAO extends BaseDAO {
         return await PackageDAO.packageById(connection, pkgId);
     }
 
+    public static async addPackageDiffMap(connection: IConnection, deploymentKey: string,
+                                      packageInfo: PackageDTO, packageHash: string): Promise<any> {
+
+        let pkgId = packageInfo.id;
+        const newDiffs = [
+            {
+                packageHash,
+                size: packageInfo.diffPackageMap[packageHash].size,
+                url: packageInfo.diffPackageMap[packageHash].url,
+            }
+        ];
+        return await PackageDAO.addPackageDiffs(connection, pkgId, newDiffs);
+    }
+
     public static async updatePackage(connection: IConnection, deploymentKey: string,
-        packageInfo: any, label: string): Promise<PackageDTO> {
+                                      packageInfo: any, label: string): Promise<PackageDTO> {
+
         const deployment = await DeploymentDAO.deploymentForKey(connection, deploymentKey);
+        let pkgId = packageInfo.id;
+        if (!pkgId) {
+            const history = await HistoryDAO.historyForDeployment(connection, deployment.id);
 
-        const history = await HistoryDAO.historyForDeployment(connection, deployment.id);
+            if (!history || history.length === 0) {
+                throw new Error("Not found. no deployment-package history for deployment key [" + deploymentKey + "]");
+            }
 
-        if (!history || history.length === 0) {
-            throw new Error("Not found. no deployment-package history for deployment key [" + deploymentKey + "]");
-        }
-
-        let pkgId = history[0].package_id;
-        if (label) {
-            const found = history.find((h: any) => h.label === label);
-            if (found) {
-                pkgId = found.package_id;
+            pkgId = history[0].package_id;
+            if (label) {
+                const found = history.find((h: any) => h.label === label);
+                if (found) {
+                    pkgId = found.package_id;
+                }
             }
         }
 

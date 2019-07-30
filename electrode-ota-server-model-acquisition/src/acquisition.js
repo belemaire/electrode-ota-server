@@ -1,6 +1,5 @@
 import { missingParameter } from 'electrode-ota-server-errors';
 import version from 'semver';
-const fixver = (ver) => ver ? ('' + ver).replace(/^(\d+?)$/, '$1.0.0') : '0.0.0';
 
 export default (options, dao, weighted, _download, manifest, logger) => {
     const api = {
@@ -42,13 +41,24 @@ export default (options, dao, weighted, _download, manifest, logger) => {
                     }
                 }
 
-                pkg = await dao.getNewestApplicablePackage(params.deploymentKey, params.tags);
+                pkg = await dao.getNewestApplicablePackage(params.deploymentKey, params.tags, params.appVersion);
+                if(!pkg) {
+                    // no package match, use latest version that matches tag
+                    pkg = await dao.getNewestApplicablePackage(params.deploymentKey, params.tags);
+                    if (!pkg) {
+                        // no package matching tag
+                        return {
+                            isAvailable: false,
+                            shouldRunBinaryVersion: false
+                        }
+                    }
+                }
+                const pkgAppVersion = version.coerce(pkg.appVersion, true).toString();
+                const paramAppVersion = version.coerce(params.appVersion, true).toString();
 
                 let isNotAvailable = pkg.packageHash == params.packageHash || !('clientUniqueId' in params)
-                    || version.gt(params.appVersion, pkg.appVersion)
+                    || version.gt(paramAppVersion, pkgAppVersion)
                     || pkg.isDisabled;
-
-                const appVersion = fixver(pkg.appVersion);
 
                 function makeReturn(isAvailable) {
                     const packageSize = pkg && pkg.size && (pkg.size - 0) || 0;
@@ -56,13 +66,13 @@ export default (options, dao, weighted, _download, manifest, logger) => {
                         downloadURL: pkg.blobUrl,
                         isAvailable,
                         isMandatory: pkg.isMandatory,
-                        appVersion,
+                        appVersion: pkg.appVersion,
                         label: pkg.label,
                         packageSize,
                         packageHash: pkg.packageHash,
                         description: pkg.description,
                         // true == there is an update but it requires a newer binary version.
-                        "updateAppVersion": version.lt(fixver(params.appVersion), appVersion),
+                        "updateAppVersion": version.lt(paramAppVersion, pkgAppVersion),
                         //TODO - find out what this should be
                         "shouldRunBinaryVersion": false
                     };
@@ -79,12 +89,19 @@ export default (options, dao, weighted, _download, manifest, logger) => {
                                 return dao.historyByIds(deployment.history_)
                                     .then(history => history.filter(v => v.packageHash == params.packageHash))
                                     .then(matches => {
+                                        // No packages match params.packageHash;  return existing package
+                                        if(matches.length == 0) {
+                                            return ret;
+                                        }
+                                        // manifest generates the diff between latest package and client's package
                                         return manifest(matches.concat(pkg), params.bundleDiff, params.bundleFileName).then(v => {
                                             const newPackage = v[v.length - 1];
-                                            return dao.updatePackage(deployment.key, newPackage).then((pkgLast) => {
+                                            // TODO: Offload generating a diff map to another process.
+                                            // Save package diff created from manifest
+                                            return dao.addPackageDiffMap(deployment.key, newPackage, params.packageHash).then(() => {
                                                 const p2 = newPackage.diffPackageMap 
-                                                        && newPackage.diffPackageMap[params.packageHash]
-                                                        && newPackage.diffPackageMap[params.packageHash].find(p => p.bundleDiff === params.bundleDiff);
+                                                && newPackage.diffPackageMap[params.packageHash]
+                                                && newPackage.diffPackageMap[params.packageHash].find(p => p.bundleDiff === params.bundleDiff);
                                                 if (p2) {
                                                     ret.downloadURL = p2.url;
                                                     ret.packageSize = p2.size;

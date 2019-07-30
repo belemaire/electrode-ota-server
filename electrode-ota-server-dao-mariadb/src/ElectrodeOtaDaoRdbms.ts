@@ -14,7 +14,8 @@ import { AppDTO,
          MetricInDTO,
          MetricOutDTO,
          PackageDTO,
-         UserDTO } from "./dto";
+         UserDTO,
+         MetricByStatusOutDTO} from "./dto";
 import { IElectrodeOtaDao } from "./IElectrodeOtaDao";
 import { AccessKeyQueries, UserQueries } from "./queries";
 
@@ -197,16 +198,24 @@ export default class ElectrodeOtaDaoRdbms implements IElectrodeOtaDao {
         });
     }
 
+    // Updates the package, including labels and diff maps
     public async updatePackage(deploymentKey: string, packageInfo: any, label: string): Promise<PackageDTO> {
         return this.connectAndExecute<PackageDTO>((connection) => {
             return PackageDAO.updatePackage(connection, deploymentKey, packageInfo, label);
         });
     }
+    // Add package diff-map
+    public async addPackageDiffMap(deploymentKey: string, packageInfo: PackageDTO, packageHash: string): Promise<any> {
+        return this.connectAndExecute<PackageDTO>((connection) => {
+            return PackageDAO.addPackageDiffMap(connection, deploymentKey, packageInfo, packageHash);
+        });
+    }
 
     public async getNewestApplicablePackage(deploymentKey: string,
-                                            tags: string[] | undefined): Promise<PackageDTO | void> {
+                                            tags: string[] | undefined,
+                                            appVersion: string | undefined): Promise<PackageDTO | void> {
         return this.connectAndExecute<PackageDTO | void>((conection) => {
-            return PackageDAO.getNewestApplicablePackage(conection, deploymentKey, tags);
+            return PackageDAO.getNewestApplicablePackage(conection, deploymentKey, tags, appVersion);
         });
     }
 
@@ -264,6 +273,12 @@ export default class ElectrodeOtaDaoRdbms implements IElectrodeOtaDao {
         return this.connectAndExecute((connection) => {
             return MetricDAO.metrics(connection, deploymentKey);
         });
+    }
+
+    public async metricsByStatus(deploymentKey: string): Promise<MetricByStatusOutDTO[]> {
+        return this.connectAndExecute((connection) => {
+            return MetricDAO.metricsByStatus(connection, deploymentKey);
+        })
     }
 
     // UPLOAD / DOWNLOAD functions ===========

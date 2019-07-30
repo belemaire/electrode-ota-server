@@ -6,6 +6,8 @@ import {
 } from "electrode-ota-server-model-manifest/lib/manifest";
 import { shasum } from "electrode-ota-server-util";
 
+import version from 'semver';
+
 import {
   alreadyExists,
   alreadyExistsMsg,
@@ -37,13 +39,20 @@ const hasDeploymentName = ({ deployments }, deployment) => {
   return deployment in deployments;
 };
 
-const packageContainsChanges = (deploymentInDb, uploadedContentPackageHash) => {
+const packageContainsChanges = (
+  deploymentInDb,
+  uploadedContentPackageHash,
+  appVersion
+) => {
   if (
     deploymentInDb &&
     deploymentInDb.package &&
     deploymentInDb.package.packageHash
   ) {
-    return uploadedContentPackageHash !== deploymentInDb.package.packageHash;
+    return (
+      uploadedContentPackageHash !== deploymentInDb.package.packageHash ||
+      appVersion !== deploymentInDb.package.appVersion
+    );
   }
   return true;
 };
@@ -265,7 +274,7 @@ export default (options, dao, upload, logger) => {
               notFound(
                 pkg,
                 `Deployment "${params.deployment}" has no package with label "${
-                params.label
+                  params.label
                 }"`
               );
             }
@@ -275,11 +284,12 @@ export default (options, dao, upload, logger) => {
             // check to make sure that it is not already promoted
             if (existingPackage) {
               alreadyExistsMsg(
-                existingPackage.packageHash !== pkg.packageHash,
+                existingPackage.packageHash !== pkg.packageHash ||
+                  existingPackage.appVersion !== pkg.appVersion,
                 `Deployment ${params.deployment}:${
-                pkg.label
+                  pkg.label
                 } has already been promoted to ${params.to}:${
-                existingPackage.label
+                  existingPackage.label
                 }.`
               );
             }
@@ -310,7 +320,7 @@ export default (options, dao, upload, logger) => {
                 manifestBlobUrl: pkg.manifestBlobUrl,
                 size: pkg.size,
                 label: "v" + (t.history_ ? t.history_.length + 1 : 1),
-                tags: params.tags,
+                tags: params.tags
               })
               .tap(() => {
                 logger.info(
@@ -354,13 +364,14 @@ export default (options, dao, upload, logger) => {
         pkg = await dao.historyLabel(app.id, params.deployment, params.label);
         notFound(pkg, `Package for '${params.label}' not found.`);
       }
+
       const {
         isDisabled = pkg.isDisabled,
         isMandatory = pkg.isMandatory,
         rollout = pkg.rollout,
         appVersion = pkg.appVersion,
         description = pkg.description,
-        tags = pkg.tags,
+        tags = pkg.tags
       } = excludeNull(params);
 
       invalidRequest(
@@ -377,7 +388,7 @@ export default (options, dao, upload, logger) => {
         rollout,
         appVersion,
         description,
-        tags,
+        tags
       };
 
       return dao
@@ -499,7 +510,7 @@ export default (options, dao, upload, logger) => {
          */
 
     async upload(vals) {
-      const {
+      let {
         app,
         email,
         deployment = "Staging",
@@ -511,10 +522,9 @@ export default (options, dao, upload, logger) => {
           isMandatory = false,
           rollout = 100,
           appVersion = "1.0.0",
-          tags,
+          tags
         }
       } = vals;
-
       const _app = await api.findApp({ email, app });
 
       notFound(
@@ -533,7 +543,7 @@ export default (options, dao, upload, logger) => {
 
       const deployments = await dao.deploymentByApp(_app.id, deployment);
       alreadyExistsMsg(
-        packageContainsChanges(deployments, packageHash),
+        packageContainsChanges(deployments, packageHash, appVersion),
         "No changes detected in uploaded content for this deployment."
       );
 
@@ -603,17 +613,20 @@ export default (options, dao, upload, logger) => {
           "deployment"
         );
         return dao.deploymentByApp(app.id, params.deployment).then(deployment =>
-          dao.metrics(deployment.key).then((metrics = []) => {
+          dao.metricsByStatus(deployment.key).then((metrics = []) => {
             const { label } = deployment.package || {};
             //    "DeploymentSucceeded" |  "DeploymentFailed" |  "Downloaded";
 
-            logger.info({ deployment: params.deployment }, "fetched metrics");
+            logger.info(
+              { deployment: params.deployment },
+              "fetched metrics by status"
+            );
 
-            return metrics.reduce((obj, val) => {
+            let summary = metrics.reduce((accumulator, val) => {
               const key = val.label || val.appversion;
               const ret =
-                obj[key] ||
-                (obj[key] = {
+                accumulator[key] ||
+                (accumulator[key] = {
                   active: 0,
                   downloaded: 0,
                   installed: 0,
@@ -621,29 +634,39 @@ export default (options, dao, upload, logger) => {
                 });
               switch (val.status) {
                 case "DeploymentSucceeded":
-                  ret.active++;
+                  ret.active += val.total;
                   if (label === val.label) {
-                    //pervious deployment is no longer active.
-                    /*                                    obj[val.previouslabelorappversion] || (obj[val.previouslabelorappversion] = {
-                                     active: 0,
-                                     downloaded: 0,
-                                     installed: 0,
-                                     failed: 0
-                                     });*/
-                    if (obj[val.previouslabelorappversion])
-                      obj[val.previouslabelorappversion].active--;
+                    //previous deployment is no longer active.
+                    if (accumulator[val.previouslabelorappversion]) {
+                      accumulator[val.previouslabelorappversion].active -=
+                        val.total;
+                    } else {
+                      // metrics is not ordered, so previous label not necessary in accumulator yet
+                      accumulator[val.previouslabelorappversion] = {
+                        active: -val.total,
+                        downloaded: 0,
+                        installed: 0,
+                        failed: 0
+                      };
+                    }
                   }
-                  ret.installed++;
+                  ret.installed += val.total;
                   break;
                 case "DeploymentFailed":
-                  ret.failed++;
+                  ret.failed += val.total;
                   break;
                 case "Downloaded":
-                  ret.downloaded++;
+                  ret.downloaded += val.total;
                   break;
               }
-              return obj;
+              return accumulator;
             }, {});
+            for (let k in summary) {
+              // Zero out negative active counts.
+              // Negative counts can occur if the previous active < current active
+              summary[k].active = summary[k].active > 0 ? summary[k].active : 0;
+            }
+            return summary;
           })
         );
       });

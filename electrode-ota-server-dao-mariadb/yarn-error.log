@@ -1,42 +1,37 @@
 Arguments: 
-  /Users/blemair/.nvm/versions/node/v8.11.1/bin/node /usr/local/Cellar/yarn/1.6.0/libexec/bin/yarn.js install --mutex network:42424
+  /Users/k0s00ly/.nvm/versions/node/v8.11.2/bin/node /usr/local/Cellar/yarn/1.15.2/libexec/bin/yarn.js install --mutex network:42424
 
 PATH: 
-  /Users/blemair/Code/electrode-ota-server/electrode-ota-server-dao-mariadb/node_modules/.bin:/Users/blemair/Code/electrode-ota-server/node_modules/.bin:/Users/blemair/Code/node_modules/.bin:/Users/blemair/node_modules/.bin:/Users/node_modules/.bin:/node_modules/.bin:/Users/blemair/.nvm/versions/node/v8.11.1/bin:/Users/blemair/Code/electrode-ota-server/node_modules/.bin:/Users/blemair/.config/yarn/link/node_modules/.bin:/Users/blemair/Code/electrode-ota-server/node_modules/.bin:/Users/blemair/.config/yarn/link/node_modules/.bin:/Users/blemair/.nvm/versions/node/v8.11.1/libexec/lib/node_modules/npm/bin/node-gyp-bin:/Users/blemair/.nvm/versions/node/v8.11.1/lib/node_modules/npm/bin/node-gyp-bin:/Users/blemair/.nvm/versions/node/v8.11.1/bin/node_modules/npm/bin/node-gyp-bin:/Users/blemair/.rvm/gems/ruby-2.4.1/bin:/Users/blemair/.rvm/gems/ruby-2.4.1@global/bin:/Users/blemair/.rvm/rubies/ruby-2.4.1/bin:/Users/blemair/.yarn/bin:/Users/blemair/.nvm/versions/node/v8.11.1/bin:/Users/blemair/.oh-my-zsh/custom/plugins/git-open:/Users/blemair/Code/v8/depot_tools:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/blemair/Library/Android/sdk/platform-tools:/Users/blemair/Library/Android/sdk/tools:/Applications/pidcat-master:/Users/blemair/Code/ant/apache-ant-1.9.7/bin:/Users/blemair/.rvm/bin
+  /Users/k0s00ly/workspace/ern/electrode-ota-server/electrode-ota-server-dao-mariadb/node_modules/.bin:/Users/k0s00ly/workspace/ern/electrode-ota-server/node_modules/.bin:/Users/k0s00ly/workspace/ern/node_modules/.bin:/Users/k0s00ly/workspace/node_modules/.bin:/Users/k0s00ly/node_modules/.bin:/Users/node_modules/.bin:/node_modules/.bin:/Users/k0s00ly/.nvm/versions/node/v8.11.2/bin:/var/folders/tz/mjtd64790230rfttx9qfjs4dbyk79m/T/yarn--1564184686343-0.4835749067760149:/Users/k0s00ly/workspace/ern/electrode-ota-server/node_modules/.bin:/Users/k0s00ly/.config/yarn/link/node_modules/.bin:/Users/k0s00ly/.nvm/versions/node/v8.11.2/libexec/lib/node_modules/npm/bin/node-gyp-bin:/Users/k0s00ly/.nvm/versions/node/v8.11.2/lib/node_modules/npm/bin/node-gyp-bin:/Users/k0s00ly/.nvm/versions/node/v8.11.2/bin/node_modules/npm/bin/node-gyp-bin:/Users/k0s00ly/.nvm/versions/node/v8.11.2/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/k0s00ly/Library/Android/sdk/tools:/Users/k0s00ly/Library/Android/sdk/platform-tools:/Users/k0s00ly/Library/Android/sdk/emulator
 
 Yarn version: 
-  1.6.0
+  1.15.2
 
 Node version: 
-  8.11.1
+  8.11.2
 
 Platform: 
   darwin x64
 
 Trace: 
-  Error: https://registry.yarnpkg.com/@types/node/-/node-9.4.3.tgz: Request failed "404 Not Found"
-      at ResponseError.ExtendableBuiltin (/usr/local/Cellar/yarn/1.6.0/libexec/lib/cli.js:212:66)
-      at new ResponseError (/usr/local/Cellar/yarn/1.6.0/libexec/lib/cli.js:318:124)
-      at Request.<anonymous> (/usr/local/Cellar/yarn/1.6.0/libexec/lib/cli.js:61933:26)
-      at emitOne (events.js:116:13)
-      at Request.emit (events.js:211:7)
-      at Request.module.exports.Request.onRequestResponse (/usr/local/Cellar/yarn/1.6.0/libexec/lib/cli.js:134041:10)
-      at emitOne (events.js:116:13)
-      at ClientRequest.emit (events.js:211:7)
-      at HTTPParser.parserOnIncomingClient (_http_client.js:551:21)
-      at HTTPParser.parserOnHeadersComplete (_http_common.js:115:23)
+  Error: unable to get local issuer certificate
+      at TLSSocket.<anonymous> (_tls_wrap.js:1105:38)
+      at emitNone (events.js:106:13)
+      at TLSSocket.emit (events.js:208:7)
+      at TLSSocket._finishInit (_tls_wrap.js:639:8)
+      at TLSWrap.ssl.onhandshakedone (_tls_wrap.js:469:38)
 
 npm manifest: 
   {
     "dependencies": {
       "@types/chai": "^4.0.4",
-      "@types/lodash": "^4.14.76",
+      "@types/lodash": "4.14.108",
       "@types/mocha": "^2.2.42",
       "@types/mysql": "0.0.34",
       "@types/node": "^8.0.24",
       "bluebird": "^3.5.1",
       "chai": "^4.1.1",
-      "lodash": "^4.17.4",
+      "lodash": ">=4.17.11",
       "mocha": "^3.5.0",
       "mysql": "^2.14.1",
       "nyc": "^11.1.0",
@@ -75,8 +70,8 @@ Lockfile:
       "@types/node" "*"
   
   "@types/node@*":
-    version "9.4.3"
-    resolved "https://registry.yarnpkg.com/@types/node/-/node-9.4.3.tgz#121b21929abfa537f47099d1d0b21b337fe2c8a5"
+    version "8.9.1"
+    resolved "https://registry.yarnpkg.com/@types/node/-/node-8.9.1.tgz#5a329d73a97f3c5a626dfe0ed8c0b831fee5357a"
   
   "@types/node@^8.0.24":
     version "8.9.1"

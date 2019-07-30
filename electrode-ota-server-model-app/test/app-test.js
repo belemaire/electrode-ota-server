@@ -23,20 +23,15 @@ const APP = {
   app: "super"
 };
 
-describe("model/app", function () {
+describe("model/app", function() {
   this.timeout(50000);
-  let account, ac;
+  let account, ac, dao;
   before(async () => {
-    const dao = await initDao();
+    dao = await initDao();
     let w = 0;
     account = accountFactory({}, dao, console);
     const up = upload({}, dao);
-    ac = appFactory(
-      {},
-      dao,
-      up,
-      console
-    );
+    ac = appFactory({}, dao, up, console);
   });
 
   after(shutdown);
@@ -162,7 +157,7 @@ describe("model/app", function () {
             releasedBy: "test@p.com",
             rollout: 50,
             size: "22",
-            tags: null,
+            tags: null
           },
           {
             appVersion: "1.0.0",
@@ -182,7 +177,7 @@ describe("model/app", function () {
             releasedBy: "test@p.com",
             rollout: 25,
             size: "16",
-            tags: null,
+            tags: null
           }
         ])
       )
@@ -224,7 +219,7 @@ describe("model/app", function () {
           size: "22",
           packageHash:
             "8d7573816249dc6f9f34bd04dc07d4bb62c5deb6c3b1b5e574e0f26c0d2f25c9",
-          tags: null,
+          tags: null
         })
       )
       .then(dep =>
@@ -265,10 +260,135 @@ describe("model/app", function () {
           releasedBy: "test@p.com",
           rollout: 50,
           size: "22",
-          tags: null,
+          tags: null
         })
       );
   });
+
+  it("should upload with short version 2.0", () => {
+    const email = "test@short_version.com";
+    return ac.createApp({email, name: "short_version"})
+      .then(_ => ac.upload({
+        app: "short_version",
+        email,
+        package: `Some package content`,
+        packageInfo: {
+          appVersion: "2.0",
+          description: "Short app-version test"
+        }
+      }))
+      .then(_ => ac.historyDeployment({
+        app: "short_version",
+        deployment: "Staging",
+        email
+      }))
+      .then(pkg => {
+        expect(pkg.length).eq(1);
+        expect(pkg[0].appVersion).eq("2.0");
+        expect(pkg[0].description).eq("Short app-version test")
+      });
+  });
+
+  it("disallow promote of same bundle", () => {
+    const email = "swaggychamp@gmail.com";
+    const appName = "disallowSameBundle";
+
+    return ac
+      .createApp({ email, name: appName })
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: readFixture("step.0.blob.zip"),
+          deployment: "Staging",
+          packageInfo: {
+            description: "release me"
+          }
+        })
+      )
+      .then(() =>
+        ac.promoteDeployment({
+          app: appName,
+          email,
+          deployment: "Staging",
+          to: "Production"
+        })
+      )
+      .then(() =>
+        ac.promoteDeployment({
+          app: appName,
+          email,
+          deployment: "Staging",
+          to: "Production"
+        })
+      )
+      .then(
+        () => expect.fail("Should have failed"),
+        err =>
+          expect(err).to.have.property(
+            "message",
+            "Deployment Staging:v1 has already been promoted to Production:v1."
+          )
+      );
+  });
+
+  it("allow promote of same bundle for different app versions", () => {
+    const email = "swaggychamp@gmail.com";
+    const appName = "allowSameBundleDifferentAppVersion";
+    let firstLabel = "",
+      secondLabel = "";
+    return ac
+      .createApp({ email, name: appName })
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: readFixture("step.0.blob.zip"),
+          deployment: "Staging",
+          packageInfo: {
+            description: "version 1",
+            appVersion: "1.0.0"
+          }
+        })
+      )
+      .then(dep => {
+        firstLabel = dep.label;
+      })
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: readFixture("step.0.blob.zip"),
+          deployment: "Staging",
+          packageInfo: {
+            description: "version 2",
+            appVersion: "2.0.0"
+          }
+        })
+      )
+      .then(dep => {
+        secondLabel = dep.label;
+      })
+      .then(() =>
+        ac.promoteDeployment({
+          app: appName,
+          email,
+          deployment: "Staging",
+          to: "Production",
+          label: firstLabel
+        })
+      )
+      .then(() =>
+        ac.promoteDeployment({
+          app: appName,
+          email,
+          deployment: "Staging",
+          to: "Production",
+          label: secondLabel
+        })
+      );
+  });
+
   it("should rollback to last", () => {
     const email = "test@p.com";
     return ac
@@ -308,7 +428,7 @@ describe("model/app", function () {
           .to.be.an("array")
           .with.length(3);
         history.forEach(v => {
-          expect(delete v.uploadTime, "should have uploadTime").to.be.true
+          expect(delete v.uploadTime, "should have uploadTime").to.be.true;
           delete v.lastUpdated;
         });
         return history;
@@ -334,7 +454,7 @@ describe("model/app", function () {
             releasedBy: "test@p.com",
             rollout: 100,
             size: "16",
-            tags: null,
+            tags: null
           },
           {
             appVersion: "1.0.2",
@@ -354,7 +474,7 @@ describe("model/app", function () {
             releasedBy: "test@p.com",
             rollout: 50,
             size: "26",
-            tags: null,
+            tags: null
           },
           {
             appVersion: "1.0.0",
@@ -374,7 +494,7 @@ describe("model/app", function () {
             releasedBy: "test@p.com",
             rollout: 25,
             size: "16",
-            tags: null,
+            tags: null
           }
         ])
       );
@@ -453,7 +573,7 @@ describe("model/app", function () {
             releasedBy: "test@p.com",
             rollout: 100,
             size: "16",
-            tags: null,
+            tags: null
           },
           {
             appVersion: "1.0.2",
@@ -473,7 +593,7 @@ describe("model/app", function () {
             releasedBy: "test@p.com",
             rollout: 50,
             size: "26",
-            tags: null,
+            tags: null
           },
           {
             appVersion: "1.0.0",
@@ -493,7 +613,7 @@ describe("model/app", function () {
             releasedBy: "test@p.com",
             rollout: 25,
             size: "16",
-            tags: null,
+            tags: null
           }
         ])
       );
@@ -713,30 +833,66 @@ describe("model/app", function () {
       });
   });
 
+  it("allow duplicate upload for different versions", () => {
+    const email = "dup_version@walmart.com";
+    const appName = "duplicate_version_allowed";
+    return ac
+      .createApp({ email, name: appName })
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: readFixture("step.0.blob.zip"),
+          deployment: "Staging",
+          packageInfo: {
+            description: "First upload succeeds",
+            appVersion: "1.0.0"
+          }
+        })
+      )
+      .then(() =>
+        ac
+          .upload({
+            app: appName,
+            email,
+            package: readFixture("step.0.blob.zip"),
+            deployment: "Staging",
+            packageInfo: {
+              description: "Second upload succeeds too",
+              appVersion: "1.1.0"
+            }
+          })
+          .then(newPkg => {
+            expect(newPkg).not.to.be.undefined;
+            expect(newPkg.appVersion).to.eq("1.1.0");
+          })
+      );
+  });
+
   it("should handle tags on upload", () => {
     const email = "tagger@taggington.com";
     const appName = "appWillUseTags";
     const tags = ["SOCCER-MOMS", "NASCAR-DADS"];
-    return ac
-      .createApp({ email, name: appName })
-      .then(() => {
-        return ac.upload({
+    return ac.createApp({ email, name: appName }).then(() => {
+      return ac
+        .upload({
           app: appName,
           email,
           package: readFixture("step.0.blob.zip"),
           deployment: "Staging",
           packageInfo: {
             description: "release with tags",
-            tags,
+            tags
           }
-        }).then((newPkg) => {
+        })
+        .then(newPkg => {
           expect(newPkg).not.to.be.undefined;
           expect(newPkg.tags).not.to.be.undefined;
           expect(newPkg.tags.length).to.eq(tags.length);
           expect(newPkg.tags.indexOf(tags[0])).to.be.gte(0);
           expect(newPkg.tags.indexOf(tags[1])).to.be.gte(0);
         });
-      });
+    });
   });
 
   it("should handle tags on promote", () => {
@@ -746,23 +902,27 @@ describe("model/app", function () {
 
     return ac
       .createApp({ email, name: appName })
-      .then(() => ac.upload({
-        app: appName,
-        email,
-        package: readFixture("step.0.blob.zip"),
-        deployment: "Staging",
-        packageInfo: {
-          description: "release without tags"
-        }
-      }))
-      .then(() => ac.promoteDeployment({
-        app: appName,
-        email,
-        deployment: "Staging",
-        to: "Production",
-        tags,
-      }))
-      .then((promoted) => {
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: readFixture("step.0.blob.zip"),
+          deployment: "Staging",
+          packageInfo: {
+            description: "release without tags"
+          }
+        })
+      )
+      .then(() =>
+        ac.promoteDeployment({
+          app: appName,
+          email,
+          deployment: "Staging",
+          to: "Production",
+          tags
+        })
+      )
+      .then(promoted => {
         expect(promoted).not.to.be.undefined;
         expect(promoted.tags).not.to.be.undefined;
         expect(promoted.tags.length).to.eq(tags.length);
@@ -777,22 +937,26 @@ describe("model/app", function () {
 
     return ac
       .createApp({ email, name: appName })
-      .then(() => ac.upload({
-        app: appName,
-        email,
-        package: readFixture("step.0.blob.zip"),
-        deployment: "Staging",
-        packageInfo: {
-          description: "release without tags initially"
-        }
-      }))
-      .then(() => ac.updateDeployment({
-        app: appName,
-        email,
-        deployment: "Staging",
-        tags,
-      }))
-      .then((updated) => {
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: readFixture("step.0.blob.zip"),
+          deployment: "Staging",
+          packageInfo: {
+            description: "release without tags initially"
+          }
+        })
+      )
+      .then(() =>
+        ac.updateDeployment({
+          app: appName,
+          email,
+          deployment: "Staging",
+          tags
+        })
+      )
+      .then(updated => {
         expect(updated).not.to.be.undefined;
         expect(updated.tags).not.to.be.undefined;
         expect(updated.tags.length).to.eq(tags.length);
@@ -804,53 +968,62 @@ describe("model/app", function () {
   it("should updateDeployment for a label", () => {
     const email = "label@walmart.com";
     const appName = "updateDeploymentWithLabel";
-    return ac.createApp({ email, name: appName })
-      .then(() => ac.upload({
-        app: appName,
-        email,
-        package: "Package for v1",
-        deployment: "Staging",
-        packageInfo: {
-          description: "v1 description",
+    return ac
+      .createApp({ email, name: appName })
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: "Package for v1",
+          deployment: "Staging",
+          packageInfo: {
+            description: "v1 description",
+            label: "v1",
+            rollout: 10,
+            isDisabled: false
+          }
+        })
+      )
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: "Package v2",
+          deployment: "Staging",
+          packageInfo: {
+            description: "v2 description",
+            label: "v2",
+            isDisabled: false,
+            rollout: 11
+          }
+        })
+      )
+      .then(() =>
+        ac.updateDeployment({
+          app: appName,
+          email,
+          description: "v1 new description",
+          deployment: "Staging",
           label: "v1",
-          rollout: 10,
-          isDisabled: false
-        }
-      }))
-      .then(() => ac.upload({
-        app: appName,
-        email,
-        package: "Package v2",
-        deployment: "Staging",
-        packageInfo: {
-          description: "v2 description",
-          label: "v2",
-          isDisabled: false,
-          rollout: 11
-        }
-      }))
-      .then(() => ac.updateDeployment({
-        app: appName,
-        email,
-        description: "v1 new description",
-        deployment: "Staging",
-        label: "v1",
-        rollout: 99,
-        isDisabled: true
-      }))
-      .then((updated) => {
+          rollout: 99,
+          isDisabled: true
+        })
+      )
+      .then(updated => {
         expect(updated).not.to.be.undefined;
         expect(updated.label).to.eq("v1");
         expect(updated.isDisabled).to.be.true;
         expect(updated.rollout).to.eq(99);
         expect(updated.description).to.eq("v1 new description");
       })
-      .then(() => ac.historyDeployment({
-        app: appName,
-        email,
-        deployment: "Staging"
-      }))
-      .then((history) => {
+      .then(() =>
+        ac.historyDeployment({
+          app: appName,
+          email,
+          deployment: "Staging"
+        })
+      )
+      .then(history => {
         expect(history.length).to.eq(2);
         const v1 = history[1];
         expect(v1.label).to.eq("v1");
@@ -862,6 +1035,35 @@ describe("model/app", function () {
         expect(v2.isDisabled).to.be.false;
         expect(v2.rollout).to.eq(11);
         expect(v2.description).to.eq("v2 description");
+      });
+  });
+
+  it("should updateDeployment short appVersion", () => {
+    const email = "short-version@walmart.com";
+    const appName = "updateDeploymentWithShortVersion";
+    return ac
+      .createApp({ email, name: appName })
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: "Package for 19.18",
+          deployment: "Staging",
+          packageInfo: {
+            description: "v1 description",
+            appVersion: "19.18"
+          }
+        })
+      ).then(() => ac.updateDeployment({
+        app:appName,
+        email,
+        description: "v1 updated description",
+        deployment: "Staging",
+        appVersion: "19.18"
+      })).then(updated => {
+        expect(updated).not.undefined;
+        expect(updated.description).eq("v1 updated description");
+        expect(updated.appVersion).eq("19.18");
       })
   });
 
@@ -869,45 +1071,52 @@ describe("model/app", function () {
     const email = "joesmoe@walmart.com";
     const appName = "updateDeployementDoesNotCopy";
 
-    return ac.createApp({ email, name: appName })
-      .then(() => ac.upload({
-        app: appName,
-        email,
-        package: "v1 Package",
-        deployment: "Staging",
-        packageInfo: {
-          description: "v1 description to be modified",
+    return ac
+      .createApp({ email, name: appName })
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: "v1 Package",
+          deployment: "Staging",
+          packageInfo: {
+            description: "v1 description to be modified",
+            label: "v1",
+            rollout: 1,
+            isDisabled: true,
+            isMandatory: true,
+            appVersion: "1.0.0",
+            tags: ["blue"]
+          }
+        })
+      )
+      .then(() =>
+        ac.upload({
+          app: appName,
+          email,
+          package: "v2 Package",
+          deployment: "Staging",
+          packageInfo: {
+            description: "v2 description",
+            label: "v2",
+            rollout: 99,
+            isDisabled: false,
+            isMandatory: false,
+            appVersion: "2.0.0",
+            tags: ["red"]
+          }
+        })
+      )
+      .then(() =>
+        ac.updateDeployment({
+          app: appName,
+          email,
+          deployment: "Staging",
           label: "v1",
-          rollout: 1,
-          isDisabled: true,
-          isMandatory: true,
-          appVersion: "1.0.0",
-          tags: ["blue"]
-        }
-      }))
-      .then(() => ac.upload({
-        app: appName,
-        email,
-        package: "v2 Package",
-        deployment: "Staging",
-        packageInfo: {
-          description: "v2 description",
-          label: "v2",
-          rollout: 99,
-          isDisabled: false,
-          isMandatory: false,
-          appVersion: "2.0.0",
-          tags: ["red"]
-        }
-      }))
-      .then(() => ac.updateDeployment({
-        app: appName,
-        email,
-        deployment: "Staging",
-        label: "v1",
-        description: "v1 new description"
-      }))
-      .then((updated) => {
+          description: "v1 new description"
+        })
+      )
+      .then(updated => {
         expect(updated.label).to.eq("v1");
         expect(updated.description).to.eq("v1 new description");
         expect(updated.rollout).to.eq(1);
@@ -916,12 +1125,14 @@ describe("model/app", function () {
         expect(updated.appVersion).to.eq("1.0.0");
         expect(updated.tags).to.have.members(["blue"]);
       })
-      .then(() => ac.historyDeployment({
-        app: appName,
-        email,
-        deployment: "Staging"
-      }))
-      .then((history) => {
+      .then(() =>
+        ac.historyDeployment({
+          app: appName,
+          email,
+          deployment: "Staging"
+        })
+      )
+      .then(history => {
         expect(history.length).to.eq(2);
         const v1 = history[1];
         expect(v1.label).to.eq("v1");
@@ -931,6 +1142,129 @@ describe("model/app", function () {
         expect(v1.isMandatory).to.be.true;
         expect(v1.appVersion).to.eq("1.0.0");
         expect(v1.tags).to.have.members(["blue"]);
+      });
+  });
+
+  it("retrieve metrics", () => {
+    const appName = "metricsApp";
+    const email = "metricsApp@walmart.com";
+    const deployment = "Staging";
+    let deploymentKey;
+    return ac
+      .createApp({ email, name: appName })
+      .then(app => dao.deploymentByApp(app.id, "Staging"))
+      .then(deployment => {
+        deploymentKey = deployment.key;
       })
-  })
+      .then(() => {
+        const data = [
+          { label: "v1", appversion: "1.0.0", status: "Downloaded" },
+          { label: "v1", appversion: "1.0.0", status: "DeploymentSucceeded" },
+          { label: "v1", appversion: "1.0.0", status: "DeploymentSucceeded" },
+          { label: "v1", appversion: "1.0.0", status: "Downloaded" },
+          { label: "v1", appversion: "1.0.0", status: "DeploymentFailed" }
+        ];
+        return Promise.all(
+          data.map(d =>
+            dao.insertMetric({
+              clientUniqueId: "ABC",
+              deploymentKey,
+              status: d.status,
+              label: d.label,
+              appversion: d.appversion
+            })
+          )
+        );
+      })
+      .then(() =>
+        ac.metrics({
+          email,
+          app: appName,
+          deployment
+        })
+      )
+      .then(metrics => {
+        expect(metrics["v1"].active).to.eq(2);
+        expect(metrics["v1"].downloaded).to.eq(2);
+        expect(metrics["v1"].installed).to.eq(2);
+        expect(metrics["v1"].failed).to.eq(1);
+      });
+  });
+
+  it("metrics should not have negative active count", () => {
+    const appName = "negativeMetrics";
+    const email = "negativeMetrics@walmart.com";
+    const deployment = "Staging";
+    let deploymentKey;
+    return ac
+      .createApp({ email, name: appName })
+      .then(app => dao.deploymentByApp(app.id, deployment))
+      .then(deployment => {
+        deploymentKey = deployment.key;
+        return ac.upload({
+          app: appName,
+          email,
+          package: "Package of v1",
+          deployment: "Staging",
+          packageInfo: {
+            label: "v1"
+          }
+        });
+      })
+      .then(() => {
+        const data = [
+          {
+            status: "DeploymentSucceeded",
+            label: "v1",
+            appversion: "1.0.0",
+            previouslabelorappversion: "1.0.0"
+          },
+          {
+            status: "DeploymentSucceeded",
+            label: "v1",
+            appversion: "1.0.0",
+            previouslabelorappversion: "1.0.0"
+          },
+          {
+            status: "DeploymentSucceeded",
+            label: "v1",
+            appversion: "1.0.0",
+            previouslabelorappversion: "1.0.0"
+          },
+          {
+            status: "DeploymentSucceeded",
+            label: "1.0.0",
+            appversion: "1.0.0",
+            previouslabelorappversion: "0.0.0"
+          }
+        ];
+        return Promise.all(
+          data.map(d =>
+            dao.insertMetric({
+              clientUniqueId: "DEF",
+              deploymentKey,
+              status: d.status,
+              label: d.label,
+              appversion: d.appversion,
+              previouslabelorappversion: d.previouslabelorappversion
+            })
+          )
+        );
+      })
+      .then(() =>
+        ac.metrics({
+          email,
+          app: appName,
+          deployment
+        })
+      )
+      .then(metrics => {
+        expect(metrics["v1"].active).to.eq(3);
+        // active should not go negative
+        expect(metrics["1.0.0"].active).to.eq(0);
+        expect(metrics["1.0.0"].downloaded).to.eq(0);
+        expect(metrics["1.0.0"].installed).to.eq(1);
+        expect(metrics["1.0.0"].failed).to.eq(0);
+      });
+  });
 });
